@@ -24,11 +24,13 @@ import os
 import sys
 import struct
 
+from pathlib import Path
+
 __author__ = "DeaDDooMER"
 __license__ = "MIT"
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
-def unpack(path: str, show: bool, create: bool) -> None:
+def _unpack(path: str, dst: str, show: bool, create: bool) -> None:
     h: bytes
     g: int
     v: int
@@ -92,7 +94,7 @@ def unpack(path: str, show: bool, create: bool) -> None:
                       + " / size " + str(esize)
                       + ")")
             if create:
-                fn = f"{i:0{pad}d}.FXO"
+                fn = str(Path(dst) / f"{i:0{pad}d}.FXO")
                 try:
                     with open(fn, "wb") as fd:
                         fp.seek(eoffset)
@@ -102,7 +104,7 @@ def unpack(path: str, show: bool, create: bool) -> None:
                           file=sys.stderr)
                     exit(1)
 
-def pack(path: str, files: list[str]) -> None:
+def _pack(path: str, files: list[str]) -> None:
     i: int
     n: int = len(files)
     ioffset: int
@@ -135,9 +137,9 @@ def pack(path: str, files: list[str]) -> None:
                 ioffset += len(data)
                 fd.seek(ioffset)
 
-def help(err: bool) -> None:
+def _help(err: bool) -> None:
     print("Usage: flexpack list <file.flx>", file=sys.stderr)
-    print("       flexpack extract <file.flx>", file=sys.stderr)
+    print("       flexpack extract <file.flx> [dir]", file=sys.stderr)
     print("       flexpack create <file.flx> [file...]", file=sys.stderr)
     print("       flexpack help", file=sys.stderr)
     if err:
@@ -145,35 +147,40 @@ def help(err: bool) -> None:
     else:
         exit(0)
 
-def main() -> int:
-    if len(sys.argv) < 3:
-        help(True)
-    if sys.argv[1] == "list":
-        try:
-            unpack(sys.argv[2], True, False)
-        except OSError:
-            print("error: failed to open archive " + sys.argv[2],
-                  file=sys.stderr)
-            exit(1)
-    elif sys.argv[1] == "extract":
-        try:
-            unpack(sys.argv[2], False, True)
-        except OSError:
-            print("error: failed to open archive " + sys.argv[2],
-                  file=sys.stderr)
-            exit(1)
-    elif sys.argv[1] == "create":
-        try:
-            pack(sys.argv[2], sys.argv[3:])
-        except OSError:
-            print("error: failed to create archive " + sys.argv[2],
-                  file=sys.stderr)
-            exit(1)
-    elif sys.argv[1] == "help":
-        help(False)
-    else:
-        help(True)
+def _main() -> int:
+    mode: str
+    arc: str
+    dst: str
+    lst: list[str]
+    n: int
+
+    if len(sys.argv) < 2:
+        _help(True)
+    mode = sys.argv[1]
+
+    try:
+        if mode in ["list", "extract"]:
+            if len(sys.argv) < 3:
+                _help(True)
+            arc = sys.argv[2]
+            if len(sys.argv) > 3:
+                dst = sys.argv[3]
+            else:
+                dst = ""
+            _unpack(arc, dst, mode == "list", mode == "extract")
+        elif mode == "create":
+            if len(sys.argv) < 3:
+                _help(True)
+            arc = sys.argv[2]
+            lst = sys.argv[3:]
+            _pack(arc, lst)
+        else:
+             _help(mode != "help")
+    except OSError:
+        print("error: failed to " + mode + " archive " + arc, file=sys.stderr)
+        return 1
+
     return 0
 
 if __name__ == "__main__":
-    exit(main())
+    exit(_main())
