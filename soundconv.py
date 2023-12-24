@@ -660,6 +660,8 @@ def read_s8snd(path: str) -> tuple[bytearray, int]:
             raise ValueError("expected s8snd version 1")
         if size > filesize - 34:
             raise ValueError("file truncated")
+        if pad != b"\0" * 24:
+            print("warning: non-zero pad in header", file=sys.stderr)
 
         # convert signed to unsigned
         data = bytearray(fp.read(size))
