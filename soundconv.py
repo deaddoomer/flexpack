@@ -629,6 +629,70 @@ def read_wave(path: str) -> tuple[bytearray, int]:
     return data, rate
 
 # ============================================================================ #
+#                          Ultima 8 SKF Sound Format                           #
+# ============================================================================ #
+
+def read_s8snd(path: str) -> tuple[bytearray, int]:
+    fp: IO[bytes]
+    filesize: int
+    sig: int
+    size: int
+    rate: int
+    ver: int
+    pad: bytes
+    data: bytearray
+    i: int
+
+    with open(path, "rb") as fp:
+        # check file size
+        fp.seek(0, os.SEEK_END)
+        filesize = fp.tell()
+        fp.seek(0)
+
+        if filesize < 34:
+            raise ValueError("too small to be s8snd")
+
+        # read header
+        [sig, size, rate, ver, pad] = struct.unpack("<HLHH24s", fp.read(34))
+        if sig != 0x000D:
+            raise ValueError("not s8snd file")
+        if ver != 1:
+            raise ValueError("expected s8snd version 1")
+        if size > filesize - 34:
+            raise ValueError("file truncated")
+
+        # convert signed to unsigned
+        data = bytearray(fp.read(size))
+        for i in range(size):
+            data[i] ^= 0x80
+
+    return data, rate
+
+def write_s8snd(path: str, raw: bytearray, rate: int) -> None:
+    fp: IO[bytes]
+    data: bytearray
+    size: int
+    i: int
+
+    # convert unsiged to signed
+    size = len(raw)
+    data = bytearray(raw)
+    for i in range(size):
+        data[i] ^= 0x80
+
+    with open(path, "wb") as fp:
+        fp.write(
+            struct.pack(f"<HLHH24s{size}s",
+                0x000D,     # signature
+                size,       # data size
+                rate,       # sample rate
+                1,          # version
+                b"\0" * 24, # pad
+                data        # data
+            )
+        )
+
+# ============================================================================ #
 #                                     Main                                     #
 # ============================================================================ #
 
@@ -636,8 +700,9 @@ def _help() -> None:
     fp: IO[str] = sys.stderr
     print("Usage: soundconv <src_fmt> <dst_fmt> <src> <dst>", file=fp)
     print("Formats:", file=fp)
-    print("    wav   - Microsoft RIFF WAVE (PCM U8 MONO Subset)", file=fp)
-    print("    u8snd - Ultima 8 Sound Format", file=fp)
+    print("    wav   - Microsoft RIFF WAVE (PCM U8 MONO)", file=fp)
+    print("    u8snd - Ultima 8 Sonarc Sound Format", file=fp)
+    print("    s8snd - Ultima 8 SKF Sound Format", file=fp)
     exit(1)
 
 def _main() -> int:
@@ -654,10 +719,10 @@ def _main() -> int:
     src = sys.argv[3]
     dst = sys.argv[4]
 
-    if smode not in ["wav", "u8snd"]:
+    if smode not in ["wav", "u8snd", "s8snd"]:
         print("error: unknown source format " + smode, file=sys.stderr)
         _help()
-    if dmode not in ["wav", "u8snd"]:
+    if dmode not in ["wav", "u8snd", "s8snd"]:
         print("error: unknown destination format " + dmode, file=sys.stderr)
         _help()
 
@@ -667,12 +732,16 @@ def _main() -> int:
             [data, rate] = read_wave(src)
         elif smode == "u8snd":
             [data, rate] = read_u8snd(src)
+        elif smode == "s8snd":
+            [data, rate] = read_s8snd(src)
 
         pfn = dst
         if dmode == "wav":
             write_wave(dst, data, rate)
         elif dmode == "u8snd":
             write_u8snd(dst, data, rate, frame=1024, align=2)
+        elif dmode == "s8snd":
+            write_s8snd(dst, data, rate)
     except (ValueError, OSError) as e:
         print("error: " + pfn + ": " + str(e), file=sys.stderr)
         exit(1)
