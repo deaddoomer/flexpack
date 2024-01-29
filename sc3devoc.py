@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 """
-Voice arcive (un)packer for Star Control 3
+Voice archive (un)packer for Star Control 3
 """
 
 from __future__ import annotations # Python 3.7+
@@ -18,7 +18,7 @@ from configparser import ConfigParser
 
 __author__ = "DeaDDooMER"
 __license__ = "MIT"
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 class BitStream:
     data: bytearray
@@ -376,6 +376,7 @@ def get_wave(path: str) -> bytes:
     byterate: int
     align: int
     bits: int
+    hdr: bytes
     data: bytes
 
     with open(path, "rb") as fp:
@@ -403,7 +404,7 @@ def get_wave(path: str) -> bytes:
         if fp.read(4) != b"fmt ":
             raise ValueError("extected WAVE-fmt chunk")
         size = struct.unpack("<L", fp.read(4))[0]
-        if (size != 16) or (fp.tell() + size > 8 + riffsize):
+        if (size < 16) or (fp.tell() + size > 8 + riffsize):
             raise ValueError("invalid WAVE-fmt size")
         [fmt, chan, rate, byterate, align, bits] = struct.unpack_from(
             "<HHLLHH",
@@ -426,15 +427,22 @@ def get_wave(path: str) -> bytes:
         size = struct.unpack("<L", fp.read(4))[0]
         if fp.tell() + size > 8 + riffsize:
             raise ValueError("invalid WAVE-data size")
+        data = fp.read(size)
 
-        # Star Control 3 requires 44 byte header (check just in case)
-        if fp.tell() != 44:
-            raise ValueError("this WAVE not compatible with Star Control 3 :(")
+    # Star Control 3 requires fixed-size header
+    hdr = struct.pack(
+        "<4sL4s 4sL HHLLHH 4sL",
+        b"RIFF",            # RIFF signature
+        44 + len(data) - 8, # RIFF size
+        b"WAVE",            # WAVE signature
+        b"fmt ",            # fmt header
+        16,                 # fmt 16 bytes
+        fmt, chan, rate, byterate, align, bits,
+        b"data",            # data header
+        len(data)           # data size
+    )
 
-        fp.seek(0)
-        data = fp.read(filesize)
-
-    return data
+    return hdr + data
 
 def write_pad(fp: IO[bytes], skip: int, align: int) -> None:
     pad: int
