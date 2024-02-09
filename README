@@ -1,0 +1,14 @@
+ Tool         | Supported games      | Description
+===============================================================================
+ flexpack.py  | Crusader: No Remorse | FLEX archive (un)packer
+              | Crusader: No Regert  |
+              | Ultima 8: Pagan      |
+-------------------------------------------------------------------------------
+ shapeconv.py | Crusader: No Remorse | Graphics converter (shapes)
+              | Crusader: No Regert  |
+-------------------------------------------------------------------------------
+ soundconv.py | Ultima 8: Pagan      | Sound converter (voice)
+-------------------------------------------------------------------------------
+ sc3devoc.py  | Star Control 3       | Sound converter (voice)
+-------------------------------------------------------------------------------
+ bdfnt.py     | Black Dahlia         | Font converter
