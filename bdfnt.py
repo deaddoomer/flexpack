@@ -13,6 +13,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from argparse import ArgumentParser, Namespace
 
+__author__ = "DeaDDooMER"
+__license__ = "MIT"
+__version__ = "1.0.0"
+
 class BitStream:
     data: bytearray
     offset: int
