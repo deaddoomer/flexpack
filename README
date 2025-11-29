@@ -10,5 +10,7 @@
  soundconv.py | Ultima 8: Pagan      | Sound converter (voice)
 -------------------------------------------------------------------------------
  sc3devoc.py  | Star Control 3       | Sound converter (voice)
+ QTool.java   |                      | Extract/Replace sound in Q files
 -------------------------------------------------------------------------------
  bdfnt.py     | Black Dahlia         | Font converter
+-------------------------------------------------------------------------------
