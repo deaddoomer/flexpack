@@ -5,118 +5,6 @@ final class QTool {
 
   private static final boolean debug = false;
 
-  private static final class LittleEndianDataOutput {
-    private OutputStream stream;
-    private int written;
-
-    public LittleEndianDataOutput (OutputStream stream)
-    {
-      assert(stream != null);
-      this.stream = stream;
-      this.written = 0;
-    }
-
-    public void close () throws IOException
-    {
-      stream.close();
-    }
-
-    public void write (byte[] data) throws IOException
-    {
-      stream.write(data);
-      written += data.length;
-    }
-
-    public void writeByte (int value) throws IOException
-    {
-      stream.write(value);
-      written++;
-    }
-
-    public void writeShort (int value) throws IOException
-    {
-      write(new byte[] {(byte)value, (byte)(value >> 8)});
-    }
-
-    public void writeInt (int value) throws IOException
-    {
-      write(new byte[] {(byte)value, (byte)(value >> 8), (byte)(value >> 16), (byte)(value >> 24)});
-    }
-  }
-
-  private static final class LittleEndianDataInput {
-    private InputStream stream;
-    private int cpos;
-
-    public LittleEndianDataInput (InputStream stream)
-    {
-      assert(stream != null);
-      this.stream = stream;
-      this.cpos = 0;
-    }
-
-    public void close () throws IOException
-    {
-      stream.close();
-    }
-
-    public void read (byte[] data) throws IOException
-    {
-      int i = 0;
-      int n = data.length;
-      while (n != 0) {
-        int r = stream.read(data, i, n);
-        if (r == -1) {
-          throw new EOFException();
-        } else {
-          i += r;
-          n -= r;
-          cpos += r;
-        }
-      }
-    }
-
-    public byte readByte () throws IOException
-    {
-      int x = stream.read();
-      if (x == -1) throw new EOFException();
-      cpos += 1;
-      return (byte)x;
-    }
-
-    public int readUnsignedByte () throws IOException
-    {
-      return readByte() & 0xff;
-    }
-
-    public int readShort () throws IOException
-    {
-      return readUnsignedByte() | (readByte() << 8);
-    }
-
-    public int readUnsignedShort () throws IOException
-    {
-      return readUnsignedByte() | (readUnsignedByte() << 8);
-    }
-
-    public int readInt () throws IOException
-    {
-      return readUnsignedByte() | (readUnsignedByte() << 8) | (readUnsignedByte() << 16) | (readByte() << 24);
-    }
-
-    public void skipBytes (int n) throws IOException
-    {
-      if (stream.skip(n) != n)
-        throw new EOFException();
-      cpos += n;
-    }
-
-    public int pos ()
-    {
-      return cpos;
-    }
-  }
-
   private static final class RiffWaveInputStream {
     private LittleEndianDataInput stream;
     private int dataSize;
@@ -148,7 +36,7 @@ final class QTool {
         throw new Exception("expected fmt header");
       }
       int fmtSize = stream.readInt();
-      if (fmtSize < 16 || stream.pos() + fmtSize > 8 + riffSize) {
+      if (fmtSize < 16 || stream.position() + fmtSize > 8 + riffSize) {
         throw new Exception("invalid fmt size");
       }
       this.format    = stream.readUnsignedShort();
@@ -169,10 +57,10 @@ final class QTool {
         throw new Exception("expected data header");
       }
       this.dataSize = stream.readInt();
-      if (stream.pos() + dataSize > 8 + riffSize) {
+      if (stream.position() + dataSize > 8 + riffSize) {
         throw new Exception("invalid data size");
       }
-      this.dataStart = stream.pos();
+      this.dataStart = stream.position();
     }
 
     public void close () throws IOException
@@ -182,7 +70,7 @@ final class QTool {
 
     public int available ()
     {
-      return dataSize - (stream.pos() - dataStart);
+      return dataSize - (stream.position() - dataStart);
     }
 
     public void read (byte[] buf) throws IOException
@@ -230,7 +118,7 @@ final class QTool {
     boolean finish = false;
     FileOutputStream out = null;
     do {
-      int pos = in.pos();
+      int pos = in.position();
       int op = in.readShort();
 
       if (debug) {
@@ -255,7 +143,7 @@ final class QTool {
         case 10:   // align buffer
         case 11:   // ?
         //case 12: // ? (not tested)
-          int len = op == 10 ? 0x8000 - in.pos() % 0x8000 : in.readInt();
+          int len = op == 10 ? 0x8000 - in.position() % 0x8000 : in.readInt();
 
           if (debug) {
             System.out.println("LEN: " + len);
@@ -348,7 +236,7 @@ final class QTool {
     boolean finish = false;
     boolean wavWritten = false;
     do {
-      int pos = in.pos();
+      int pos = in.position();
       int op = in.readShort();
       out.writeShort(op);
       switch (op) {
@@ -371,7 +259,7 @@ final class QTool {
             if (!ext) {
               throw new Exception("alingn command not implemented for unaligned Q variant");
             }
-            len = 0x8000 - in.pos() % 0x8000;
+            len = 0x8000 - in.position() % 0x8000;
           } else {
             len = in.readInt();
             out.writeInt(len);
